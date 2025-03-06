@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <style>
+        #video-current,
+        #video-remote {
+            width: 25%;
+            border: 1px solid black;
+        }
+    </style>
+
+    <video id="video-current" autoplay muted></video>
+    <video id="video-remote" autoplay></video><br>
+
+    <button onclick="createOffer()">create offer</button>
+    <button onclick="createAnswer()">create answer</button><br>
+
+    <textarea id="text"></textarea><br>
+
+    <button onclick="setRemoteDescription()">set remote description</button>
+    <button onclick="addCandidate()">add candidate</button>
+
+    <br>
+    <br>
+    <input type="text" id="room-id" placeholder="room id" value="1">
+    <input type="text" id="user-id" placeholder="user id" value="">
+    <button type="button" id="join-room">join room</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.0/socket.io.min.js"
+        integrity="sha512-2j1eiYSzeFsyYR2U3lD1znxCZwsymcYr5REPVR3ijiFexmtaxzjj1/SWxaugYlH78QWZdRMg214NAbGlI8HuTw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        var socket = null;
+
+        var roomId = '1';
+        var userId = String(parseInt(Math.random() * 1000));
+        var remoteUserId = null;
+        var username = `José ${userId}° `;
+        var candidates = [];
+
+        const videoCurrent = document.getElementById('video-current');
+        const videoRemote = document.getElementById('video-remote');
+        const inputRoomId = document.getElementById('room-id');
+        const inputUserId = document.getElementById('user-id');
+        const buttonJoinRoom = document.getElementById('join-room');
+        const text = document.getElementById('text');
+
+        inputUserId.value = userId;
+
+        const peerConnection = new RTCPeerConnection({
+            iceServers: [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun.l.google.com:5349" },
+                { urls: "stun:stun1.l.google.com:3478" },
+                { urls: "stun:stun1.l.google.com:5349" },
+                { urls: "stun:stun2.l.google.com:19302" },
+                { urls: "stun:stun2.l.google.com:5349" },
+                { urls: "stun:stun3.l.google.com:3478" },
+                { urls: "stun:stun3.l.google.com:5349" },
+                { urls: "stun:stun4.l.google.com:19302" },
+                { urls: "stun:stun4.l.google.com:5349" },
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" },
+                { urls: "stun:stun2.l.google.com:19302" },
+                { urls: "stun:stun3.l.google.com:19302" },
+                { urls: "stun:stun4.l.google.com:19302" },
+                { urls: "stun:stun01.sipphone.com" },
+                { urls: "stun:stun.ekiga.net" },
+                { urls: "stun:stun.fwdnet.net" },
+                { urls: "stun:stun.ideasip.com" },
+                { urls: "stun:stun.iptel.org" },
+                { urls: "stun:stun.rixtelecom.se" },
+                { urls: "stun:stun.schlund.de" },
+                { urls: "stun:stunserver.org" },
+                { urls: "stun:stun.softjoys.com" },
+                { urls: "stun:stun.voiparound.com" },
+                { urls: "stun:stun.voipbuster.com" },
+                { urls: "stun:stun.voipstunt.com" },
+                { urls: "stun:stun.voxgratia.org" },
+                { urls: "stun:stun.xten.com" },
+            ]
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            handleWebSocket();
+
+            handleVideo();
+            handlePeerConnection();
+        });
+
+        function handleWebSocket() {
+            socket = io('/webrtcPeer', { path: '/webrtc', query: { name: 'test' } });
+
+            setTimeout(() => {
+                socket.emit('room-join', {
+                    roomId: roomId,
+                    userId: userId
+                });
+            }, 1000);
+
+            socket.on('room-offer-answer', async (data) => {
+                const { roomId, userId, username, type, sdp } = data;
+
+                try {
+                    text.value = JSON.stringify(sdp);
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+                    if (type == 'offer') {
+                        if (confirm(`${username} está te ligando. Clique em OK para aceitar`)) {
+                            createAnswer();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error setting remote description:', error);
+                }
+            });
+
+            socket.on('room-candidate', async (candidate) => {
+                if (candidate != null) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                }
+            });
+        }
+        function handleVideo() {
+            (async () => {
+                await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                    .then((stream) => {
+                        console.log(stream);
+
+                        videoCurrent.srcObject = stream;
+                        peerConnection.addStream(stream);
+                    })
+                    .catch((error) => {
+                        console.error('Error accessing media devices:', error);
+                        if (error.name === 'NotAllowedError') {
+                            console.error('Permission denied. Please allow access to your camera and microphone.');
+                        } else if (error.name === 'NotFoundError') {
+                            console.error('No camera or microphone found on this device.');
+                        } else {
+                            console.error('An unknown error occurred:', error.message);
+                        }
+                    });
+            })();
+        }
+        function handlePeerConnection() {
+            peerConnection.onicecandidate = (event) => {
+                socket.emit('room-candidate', {
+                    roomId: roomId,
+                    userId: userId,
+                    candidate: event.candidate
+                });
+            }
+
+            peerConnection.oniceconnectionstatechange = (event) => {
+                console.log(event);
+            }
+
+            peerConnection.onaddstream = (event) => {
+                videoRemote.srcObject = event.stream;
+            }
+        }
+        function createOffer() {
+            console.log('create offer');
+            peerConnection
+                .createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true })
+                .then((sdp) => {
+                    peerConnection.setLocalDescription(sdp);
+                    socket.emit('room-offer-answer', {
+                        roomId: roomId,
+                        userId: userId,
+                        username: username,
+                        type: 'offer',
+                        sdp: sdp
+                    });
+                })
+                .catch((error) => console.error('Error creating offer:', error));
+        }
+        function setRemoteDescription() {
+            console.log('set remote description');
+            let sdp = null;
+            try { sdp = JSON.parse(text.value); }
+            catch (e) { console.error('Error parsing sdp:', e); }
+
+            if (sdp !== null) {
+                peerConnection.setRemoteDescription(new RTCSessionDescription(sdp))
+                    .then(() => {
+                        console.log('set remote description success');
+                    })
+                    .catch((error) => console.error('Error setting remote description:', error));
+            }
+        }
+        function createAnswer() {
+            console.log('create answer');
+
+            peerConnection
+                .createAnswer({ offerToReceiveVideo: true, offerToReceiveAudio: true })
+                .then((sdp) => {
+                    console.log(sdp);
+                    peerConnection.setLocalDescription(sdp);
+                    socket.emit('room-offer-answer', {
+                        roomId: roomId,
+                        userId: userId,
+                        username: username,
+                        type: 'answer',
+                        sdp: sdp
+                    });
+                })
+                .catch((error) => console.error('Error creating answer:', error));
+
+        }
+        function addCandidate() {
+            candidates.forEach((candidate) => {
+                peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            });
+        }
+    </script>
+</body>
+
+</html>
