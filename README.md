@@ -147,7 +147,7 @@ Em caso de dúvidas ou problemas:
 2. Abra uma issue no repositório
 3. Entre em contato com a equipe de desenvolvimento
 
-## 🔮 Roadmap
+## 🔮 Roadmap (A fazer)
 
 - [ ] Suporte a chamadas em grupo
 - [ ] Chat em tempo real
