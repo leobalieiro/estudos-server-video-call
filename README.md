@@ -101,7 +101,7 @@ Para desenvolvimento local sem Docker:
 npm install
 
 # Iniciar servidor
-node server.js
+node src/index.js
 ```
 
 ## 🐛 Solução de Problemas
