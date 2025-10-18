@@ -97,11 +97,14 @@ docker compose up --build
 Para desenvolvimento local sem Docker:
 
 ```bash
+# Ir para pasta
+cd src/
+
 # Instalar dependências
 npm install
 
 # Iniciar servidor
-node src/index.js
+node index.js
 ```
 
 ## 🐛 Solução de Problemas
