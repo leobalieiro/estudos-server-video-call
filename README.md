@@ -33,14 +33,14 @@ Após a inicialização:
 
 ```
 estudos-server-video-call/
-├── docker-compose.yml
-├── Dockerfile
-├── package.json
-├── server.js
-├── public/
+├── src/
 │   ├── index.html
-│   ├── style.css
-│   └── script.js
+│   ├── index.js
+│   └── package.json
+├── .env
+├── .gitignore
+├── Dockerfile
+├── docker-compose.yml
 └── README.md
 ```
 
